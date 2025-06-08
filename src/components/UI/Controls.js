@@ -125,27 +125,29 @@ export class Controls {
   }
 
   setupEventListeners() {
+    // Map control buttons
+    const playPauseBtn = this.container.querySelector('.play-pause-btn');
+    const centerBtn = this.container.querySelector('.center-btn');
+    const toggleBtn = this.container.querySelector('.toggle-3d-btn'); // Fixed selector
+    const settingsBtn = this.container.querySelector('.settings-btn');
+
     // Play/Pause button
-    const playPauseBtn = this.element.querySelector('#play-pause-btn');
     playPauseBtn.addEventListener('click', () => {
       this.toggleAutoUpdate();
     });
 
     // Center button
-    const centerBtn = this.element.querySelector('#center-btn');
     centerBtn.addEventListener('click', () => {
       this.emit('centerOnFlights');
     });
 
     // 3D toggle
-    const toggle3DBtn = this.element.querySelector('#3d-toggle');
-    toggle3DBtn.addEventListener('click', () => {
+    toggleBtn.addEventListener('click', () => {
       this.toggle3DView();
     });
 
     // Settings toggle
-    const settingsToggle = this.element.querySelector('#settings-toggle');
-    settingsToggle.addEventListener('click', () => {
+    settingsBtn.addEventListener('click', () => {
       this.toggleSettings();
     });
 
@@ -393,4 +395,3 @@ export class Controls {
     this.eventListeners.clear();
   }
 }
-

@@ -225,14 +225,26 @@ export class OpenSkyAPI {
   }
 
   /**
-   * Check API status
+   * Test API connectivity and authentication
    */
   async getStatus() {
     try {
-      const data = await this.makeRequest('/states/all', { icao24: 'test' });
-      return { status: 'ok', timestamp: Date.now() };
+      // Use a simpler endpoint that doesn't require specific parameters
+      const response = await this.makeRequest('/states/all?lamin=45&lomin=5&lamax=46&lomax=6');
+      return {
+        status: 'connected',
+        authenticated: !!this.username,
+        rateLimit: this.username ? '4000/day' : '400/day',
+        lastUpdate: new Date().toISOString()
+      };
     } catch (error) {
-      return { status: 'error', error: error.message, timestamp: Date.now() };
+      console.warn('OpenSky API status check failed:', error.message);
+      return {
+        status: 'error',
+        authenticated: false,
+        error: error.message,
+        lastUpdate: new Date().toISOString()
+      };
     }
   }
 }

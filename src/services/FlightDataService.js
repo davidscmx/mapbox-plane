@@ -1,31 +1,26 @@
 import { OpenSkyAPI } from './api/OpenSkyAPI.js';
 import { AirplanesLiveAPI } from './api/AirplanesLiveAPI.js';
+import { MockFlightAPI } from './api/MockFlightAPI.js';
 
 /**
- * Unified Flight Data Service
- * Aggregates data from multiple flight tracking APIs
+ * Flight Data Service
+ * Aggregates flight data from multiple sources
  */
 export class FlightDataService {
   constructor() {
-    this.apis = {
-      opensky: new OpenSkyAPI(),
-      airplanesLive: new AirplanesLiveAPI()
-    };
-    
-    this.cache = new Map();
-    this.cacheTimeout = 30000; // 30 seconds
+    this.apis = [];
+    this.flights = new Map();
+    this.lastUpdate = 0;
+    this.updateInterval = 10000; // 10 seconds
     this.isUpdating = false;
-    this.updateInterval = null;
-    this.eventListeners = new Map();
+    this.listeners = new Set();
     
-    // Statistics
-    this.stats = {
-      totalFlights: 0,
-      activeFlights: 0,
-      lastUpdate: null,
-      apiStatus: {},
-      updateCount: 0
-    };
+    // Initialize APIs
+    this.openSky = new OpenSkyAPI();
+    this.airplanesLive = new AirplanesLiveAPI();
+    this.mockAPI = new MockFlightAPI(); // Fallback API
+    
+    this.apis = [this.openSky, this.airplanesLive, this.mockAPI];
   }
 
   /**
@@ -59,6 +54,116 @@ export class FlightDataService {
     });
     
     await Promise.allSettled(statusChecks);
+  }
+
+  /**
+   * Fetch flight data from all available sources
+   */
+  async fetchFlightData() {
+    if (this.isUpdating) {
+      console.log('⏳ Update already in progress, skipping...');
+      return this.getFlights();
+    }
+
+    this.isUpdating = true;
+    const startTime = Date.now();
+    console.log('🔄 Fetching flight data from all sources...');
+
+    try {
+      const results = await Promise.allSettled([
+        this.fetchFromWorkingAPIs()
+      ]);
+
+      // Process results
+      const allFlights = [];
+      results.forEach(result => {
+        if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+          allFlights.push(...result.value);
+        }
+      });
+
+      // Update flight cache
+      this.updateFlightCache(allFlights);
+      
+      const duration = Date.now() - startTime;
+      const flightCount = this.flights.size;
+      
+      console.log(`✅ Flight data updated: ${flightCount} flights (${duration}ms)`);
+      
+      // Emit update event
+      this.emit('flightsUpdated', {
+        flights: this.getFlights(),
+        count: flightCount,
+        duration,
+        timestamp: Date.now()
+      });
+
+      return this.getFlights();
+    } catch (error) {
+      console.error('❌ Error fetching flight data:', error);
+      return this.getFlights(); // Return cached data
+    } finally {
+      this.isUpdating = false;
+      this.lastUpdate = Date.now();
+    }
+  }
+
+  /**
+   * Fetch from working APIs only
+   */
+  async fetchFromWorkingAPIs() {
+    const workingAPIs = this.apis.filter(api => 
+      !api.lastError || (Date.now() - api.lastErrorTime) > 60000 // Retry after 1 minute
+    );
+
+    if (workingAPIs.length === 0) {
+      console.log('📡 No working APIs, using mock data...');
+      return await this.mockAPI.getAllFlights();
+    }
+
+    const promises = workingAPIs.map(async (api) => {
+      try {
+        if (api === this.openSky) {
+          return await api.getAllFlights();
+        } else if (api === this.airplanesLive) {
+          // Get flights around major cities
+          const locations = [
+            { lat: 40.7128, lon: -74.0060, name: 'New York' },
+            { lat: 51.5074, lon: -0.1278, name: 'London' },
+            { lat: 35.6762, lon: 139.6503, name: 'Tokyo' }
+          ];
+          
+          const allFlights = [];
+          for (const location of locations) {
+            const flights = await api.getFlightsByLocation(location.lat, location.lon, 200);
+            allFlights.push(...flights);
+          }
+          return allFlights;
+        } else if (api === this.mockAPI) {
+          return await api.getAllFlights();
+        }
+        return [];
+      } catch (error) {
+        console.warn(`API ${api.constructor.name} failed:`, error.message);
+        api.lastError = error;
+        api.lastErrorTime = Date.now();
+        return [];
+      }
+    });
+
+    const results = await Promise.allSettled(promises);
+    const allFlights = [];
+    
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+        allFlights.push(...result.value);
+        console.log(`✅ ${workingAPIs[index].constructor.name}: ${result.value.length} flights`);
+      } else {
+        console.warn(`❌ ${workingAPIs[index].constructor.name}: failed`);
+      }
+    });
+
+    return allFlights;
   }
 
   /**
@@ -325,25 +430,21 @@ export class FlightDataService {
    * Event emitter functionality
    */
   on(event, callback) {
-    if (!this.eventListeners.has(event)) {
-      this.eventListeners.set(event, []);
+    if (!this.listeners.has(event)) {
+      this.listeners.add(event);
     }
-    this.eventListeners.get(event).push(callback);
+    this.listeners.forEach(callback);
   }
 
   off(event, callback) {
-    if (this.eventListeners.has(event)) {
-      const listeners = this.eventListeners.get(event);
-      const index = listeners.indexOf(callback);
-      if (index > -1) {
-        listeners.splice(index, 1);
-      }
+    if (this.listeners.has(event)) {
+      this.listeners.delete(event);
     }
   }
 
   emit(event, data) {
-    if (this.eventListeners.has(event)) {
-      this.eventListeners.get(event).forEach(callback => {
+    if (this.listeners.has(event)) {
+      this.listeners.forEach(callback => {
         callback(data);
       });
     }
@@ -355,7 +456,6 @@ export class FlightDataService {
   destroy() {
     this.stopAutoUpdate();
     this.cache.clear();
-    this.eventListeners.clear();
+    this.listeners.clear();
   }
 }
-
