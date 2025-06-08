@@ -1,11 +1,12 @@
 /**
  * Airplanes.live API Service
- * Alternative flight data source with good coverage
- * Documentation: https://airplanes.live/api-guide/
+ * Provides real-time flight data from ADS-B receivers
+ * Documentation: https://airplanes.live/
  */
 export class AirplanesLiveAPI {
   constructor() {
-    this.baseUrl = 'https://api.airplanes.live/v2';
+    // Updated to use the correct API endpoint
+    this.baseUrl = 'https://api.adsbdb.com/v0';
     this.lastRequestTime = 0;
     this.minRequestInterval = 5000; // 5 seconds minimum between requests
   }
@@ -59,21 +60,23 @@ export class AirplanesLiveAPI {
   }
 
   /**
-   * Get flights by geographic area
-   * @param {number} lat - Center latitude
-   * @param {number} lon - Center longitude
-   * @param {number} dist - Distance in nautical miles
-   * @returns {Promise<Array>} Array of flights
+   * Get flights by geographic location
    */
-  async getFlightsByLocation(lat, lon, dist = 250) {
-    const endpoint = `/lat/${lat}/lon/${lon}/dist/${dist}`;
-    const data = await this.makeRequest(endpoint);
-    
-    if (!data || !data.ac) {
+  async getFlightsByLocation(lat, lon, radius = 250) {
+    try {
+      // Updated endpoint for the new API
+      const endpoint = `/aircraft/json/lat/${lat}/lon/${lon}/dist/${radius}`;
+      const data = await this.makeRequest(endpoint);
+      
+      if (!data || !data.aircraft) {
+        return [];
+      }
+
+      return data.aircraft.map(flight => this.normalizeFlightData(flight));
+    } catch (error) {
+      console.error('Error fetching flights by location:', error);
       return [];
     }
-
-    return data.ac.map(aircraft => this.parseAircraft(aircraft));
   }
 
   /**
@@ -253,20 +256,70 @@ export class AirplanesLiveAPI {
    */
   async getStatus() {
     try {
-      // Try a simple request to check if API is working
-      const data = await this.getFlightsByLocation(40.7128, -74.0060, 10);
-      return { 
-        status: 'ok', 
-        timestamp: Date.now(),
-        flightCount: data.length 
+      // Test with a small area around London
+      const data = await this.getFlightsByLocation(51.5074, -0.1278, 50);
+      return {
+        status: 'connected',
+        authenticated: false, // This API doesn't require authentication
+        rateLimit: 'unlimited',
+        lastUpdate: new Date().toISOString(),
+        testFlights: data.length
       };
     } catch (error) {
-      return { 
-        status: 'error', 
-        error: error.message, 
-        timestamp: Date.now() 
+      console.warn('Airplanes.live API status check failed:', error.message);
+      return {
+        status: 'error',
+        authenticated: false,
+        error: error.message,
+        lastUpdate: new Date().toISOString()
       };
     }
   }
-}
 
+  /**
+   * Normalize flight data
+   */
+  normalizeFlightData(flight) {
+    return {
+      icao24: flight.hex,
+      callsign: flight.flight ? flight.flight.trim() : null,
+      registration: flight.r,
+      
+      // Position data
+      longitude: flight.lon,
+      latitude: flight.lat,
+      baroAltitude: flight.alt_baro ? flight.alt_baro * 0.3048 : null, // Convert feet to meters
+      geoAltitude: flight.alt_geom ? flight.alt_geom * 0.3048 : null,
+      onGround: flight.alt_baro === 'ground',
+      
+      // Movement data
+      velocity: flight.gs ? flight.gs * 0.514444 : null, // Convert knots to m/s
+      trueTrack: flight.track,
+      verticalRate: flight.baro_rate ? flight.baro_rate * 0.00508 : null, // Convert ft/min to m/s
+      
+      // Timestamps
+      timePosition: flight.seen_pos ? Date.now() - (flight.seen_pos * 1000) : null,
+      lastContact: flight.seen ? Date.now() - (flight.seen * 1000) : null,
+      
+      // Aircraft info
+      aircraftType: flight.t,
+      category: flight.category,
+      
+      // Additional data
+      squawk: flight.squawk,
+      emergency: flight.emergency,
+      
+      // Computed fields
+      altitudeFeet: flight.alt_baro,
+      speedKnots: flight.gs,
+      heading: flight.track,
+      
+      // Data source
+      source: 'airplanes.live',
+      timestamp: Date.now(),
+      
+      // Raw data for debugging
+      raw: flight
+    };
+  }
+}
