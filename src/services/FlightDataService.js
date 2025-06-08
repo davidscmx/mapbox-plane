@@ -10,10 +10,12 @@ export class FlightDataService {
   constructor() {
     this.apis = [];
     this.flights = new Map();
+    this.cache = new Map(); // Add missing cache property
     this.lastUpdate = 0;
     this.updateInterval = 10000; // 10 seconds
     this.isUpdating = false;
     this.listeners = new Set();
+    this.apiStatus = {}; // Add missing apiStatus property
     
     // Initialize APIs
     this.openSky = new OpenSkyAPI();
@@ -167,111 +169,21 @@ export class FlightDataService {
   }
 
   /**
-   * Get flights from all available APIs
+   * Get all flights from cache and APIs
    */
-  async getAllFlights(bounds = null) {
-    if (this.isUpdating) {
-      console.log('⏳ Update already in progress, returning cached data');
-      return this.getCachedFlights();
+  async getAllFlights() {
+    // Return cached flights if available and recent
+    if (this.flights.size > 0 && (Date.now() - this.lastUpdate) < 30000) {
+      return Array.from(this.flights.values());
     }
 
-    this.isUpdating = true;
-    const startTime = Date.now();
-    
+    // If no cached data or data is stale, fetch new data
     try {
-      console.log('🔄 Fetching flight data from all sources...');
-      
-      const flightPromises = [];
-      
-      // OpenSky Network
-      if (this.stats.apiStatus.opensky?.status === 'ok') {
-        flightPromises.push(
-          this.apis.opensky.getAllFlights(bounds)
-            .then(flights => ({ source: 'opensky', flights, error: null }))
-            .catch(error => ({ source: 'opensky', flights: [], error }))
-        );
-      }
-      
-      // Airplanes.live
-      if (this.stats.apiStatus.airplanesLive?.status === 'ok') {
-        if (bounds) {
-          flightPromises.push(
-            this.apis.airplanesLive.getFlightsInBounds(bounds)
-              .then(flights => ({ source: 'airplanesLive', flights, error: null }))
-              .catch(error => ({ source: 'airplanesLive', flights: [], error }))
-          );
-        } else {
-          // Default to New York area if no bounds specified
-          flightPromises.push(
-            this.apis.airplanesLive.getFlightsByLocation(40.7128, -74.0060, 250)
-              .then(flights => ({ source: 'airplanesLive', flights, error: null }))
-              .catch(error => ({ source: 'airplanesLive', flights: [], error }))
-          );
-        }
-      }
-      
-      const results = await Promise.allSettled(flightPromises);
-      
-      // Combine and deduplicate flights
-      const allFlights = [];
-      const seenIcao24 = new Set();
-      
-      results.forEach(result => {
-        if (result.status === 'fulfilled') {
-          const { source, flights, error } = result.value;
-          
-          if (error) {
-            console.warn(`⚠️ ${source} API error:`, error.message);
-          } else {
-            console.log(`📊 ${source}: ${flights.length} flights`);
-            
-            flights.forEach(flight => {
-              if (flight.icao24 && !seenIcao24.has(flight.icao24)) {
-                seenIcao24.add(flight.icao24);
-                allFlights.push(flight);
-              }
-            });
-          }
-        }
-      });
-      
-      // Filter out invalid flights
-      const validFlights = allFlights.filter(flight => 
-        flight.latitude !== null && 
-        flight.longitude !== null &&
-        !isNaN(flight.latitude) && 
-        !isNaN(flight.longitude) &&
-        Math.abs(flight.latitude) <= 90 &&
-        Math.abs(flight.longitude) <= 180
-      );
-      
-      // Update cache
-      this.updateCache(validFlights);
-      
-      // Update statistics
-      this.stats.totalFlights = validFlights.length;
-      this.stats.activeFlights = validFlights.filter(f => !f.onGround).length;
-      this.stats.lastUpdate = new Date();
-      this.stats.updateCount++;
-      
-      const duration = Date.now() - startTime;
-      console.log(`✅ Flight data updated: ${validFlights.length} flights (${duration}ms)`);
-      
-      // Emit update event
-      this.emit('flightsUpdated', {
-        flights: validFlights,
-        stats: this.stats,
-        duration
-      });
-      
-      return validFlights;
-      
+      return await this.fetchFlightData();
     } catch (error) {
-      console.error('❌ Failed to fetch flight data:', error);
-      this.emit('error', error);
+      console.error('Error in getAllFlights:', error);
+      // Return any cached data we have, even if stale
       return this.getCachedFlights();
-    } finally {
-      this.isUpdating = false;
     }
   }
 
@@ -353,16 +265,27 @@ export class FlightDataService {
   }
 
   /**
-   * Update cache with new flight data
+   * Update flight cache with new data
    */
-  updateCache(flights) {
-    const timestamp = Date.now();
+  updateFlightCache(flights) {
+    if (!Array.isArray(flights)) {
+      console.warn('Invalid flights data for cache update');
+      return;
+    }
+
+    // Clear old cache
+    this.flights.clear();
+    this.cache.clear();
+
+    // Add new flights to cache
     flights.forEach(flight => {
-      this.cache.set(flight.icao24, { flight, timestamp });
+      if (flight.icao24) {
+        this.flights.set(flight.icao24, flight);
+        this.cache.set(flight.icao24, flight);
+      }
     });
-    
-    // Clean old cache entries
-    this.cleanCache();
+
+    console.log(`📦 Cache updated with ${flights.length} flights`);
   }
 
   /**
@@ -378,18 +301,20 @@ export class FlightDataService {
   }
 
   /**
-   * Get cached flights
+   * Get all cached flights
    */
   getCachedFlights() {
-    const flights = [];
-    const now = Date.now();
-    
-    for (const [key, value] of this.cache.entries()) {
-      if (now - value.timestamp < this.cacheTimeout) {
-        flights.push(value.flight);
-      }
+    if (!this.cache || this.cache.size === 0) {
+      return [];
     }
     
+    const flights = [];
+    for (const [icao24, flight] of this.cache.entries()) {
+      // Check if flight data is still fresh (within 5 minutes)
+      if (Date.now() - flight.timestamp < 300000) {
+        flights.push(flight);
+      }
+    }
     return flights;
   }
 

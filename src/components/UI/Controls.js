@@ -131,25 +131,30 @@ export class Controls {
     const toggleBtn = this.container.querySelector('.toggle-3d-btn'); // Fixed selector
     const settingsBtn = this.container.querySelector('.settings-btn');
 
-    // Play/Pause button
-    playPauseBtn.addEventListener('click', () => {
-      this.toggleAutoUpdate();
-    });
+    // Check if elements exist before adding listeners
+    if (playPauseBtn) {
+      playPauseBtn.addEventListener('click', () => {
+        this.toggleAutoUpdate();
+      });
+    }
 
-    // Center button
-    centerBtn.addEventListener('click', () => {
-      this.emit('centerOnFlights');
-    });
+    if (centerBtn) {
+      centerBtn.addEventListener('click', () => {
+        this.emit('centerOnFlights');
+      });
+    }
 
-    // 3D toggle
-    toggleBtn.addEventListener('click', () => {
-      this.toggle3DView();
-    });
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        this.toggle3DView();
+      });
+    }
 
-    // Settings toggle
-    settingsBtn.addEventListener('click', () => {
-      this.toggleSettings();
-    });
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        this.toggleSettings();
+      });
+    }
 
     // Close settings
     const closeSettings = this.element.querySelector('#close-settings');
