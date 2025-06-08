@@ -5,8 +5,8 @@
  */
 export class AirplanesLiveAPI {
   constructor() {
-    // Updated to use the correct API endpoint
-    this.baseUrl = 'https://api.adsbdb.com/v0';
+    // Use a working public API endpoint
+    this.baseUrl = 'https://opensky-network.org/api';
     this.lastRequestTime = 0;
     this.minRequestInterval = 5000; // 5 seconds minimum between requests
   }
@@ -64,15 +64,20 @@ export class AirplanesLiveAPI {
    */
   async getFlightsByLocation(lat, lon, radius = 250) {
     try {
-      // Updated endpoint for the new API
-      const endpoint = `/aircraft/json/lat/${lat}/lon/${lon}/dist/${radius}`;
+      // Use OpenSky's states endpoint with bounding box
+      const lamin = lat - (radius / 111); // Rough conversion
+      const lamax = lat + (radius / 111);
+      const lomin = lon - (radius / (111 * Math.cos(lat * Math.PI / 180)));
+      const lomax = lon + (radius / (111 * Math.cos(lat * Math.PI / 180)));
+      
+      const endpoint = `/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
       const data = await this.makeRequest(endpoint);
       
-      if (!data || !data.aircraft) {
+      if (!data || !data.states) {
         return [];
       }
 
-      return data.aircraft.map(flight => this.normalizeFlightData(flight));
+      return data.states.map(state => this.normalizeOpenSkyData(state));
     } catch (error) {
       console.error('Error fetching flights by location:', error);
       return [];
@@ -279,47 +284,47 @@ export class AirplanesLiveAPI {
   /**
    * Normalize flight data
    */
-  normalizeFlightData(flight) {
+  normalizeOpenSkyData(state) {
     return {
-      icao24: flight.hex,
-      callsign: flight.flight ? flight.flight.trim() : null,
-      registration: flight.r,
+      icao24: state.icao24,
+      callsign: state.callsign ? state.callsign.trim() : null,
+      registration: state.registration,
       
       // Position data
-      longitude: flight.lon,
-      latitude: flight.lat,
-      baroAltitude: flight.alt_baro ? flight.alt_baro * 0.3048 : null, // Convert feet to meters
-      geoAltitude: flight.alt_geom ? flight.alt_geom * 0.3048 : null,
-      onGround: flight.alt_baro === 'ground',
+      longitude: state.longitude,
+      latitude: state.latitude,
+      baroAltitude: state.baro_altitude ? state.baro_altitude * 0.3048 : null, // Convert feet to meters
+      geoAltitude: state.geo_altitude ? state.geo_altitude * 0.3048 : null,
+      onGround: state.on_ground,
       
       // Movement data
-      velocity: flight.gs ? flight.gs * 0.514444 : null, // Convert knots to m/s
-      trueTrack: flight.track,
-      verticalRate: flight.baro_rate ? flight.baro_rate * 0.00508 : null, // Convert ft/min to m/s
+      velocity: state.velocity ? state.velocity * 0.514444 : null, // Convert knots to m/s
+      trueTrack: state.true_track,
+      verticalRate: state.vertical_rate ? state.vertical_rate * 0.00508 : null, // Convert ft/min to m/s
       
       // Timestamps
-      timePosition: flight.seen_pos ? Date.now() - (flight.seen_pos * 1000) : null,
-      lastContact: flight.seen ? Date.now() - (flight.seen * 1000) : null,
+      timePosition: state.time_position ? Date.now() - (state.time_position * 1000) : null,
+      lastContact: state.last_contact ? Date.now() - (state.last_contact * 1000) : null,
       
       // Aircraft info
-      aircraftType: flight.t,
-      category: flight.category,
+      aircraftType: state.aircraft_type,
+      category: state.category,
       
       // Additional data
-      squawk: flight.squawk,
-      emergency: flight.emergency,
+      squawk: state.squawk,
+      emergency: state.emergency,
       
       // Computed fields
-      altitudeFeet: flight.alt_baro,
-      speedKnots: flight.gs,
-      heading: flight.track,
+      altitudeFeet: state.baro_altitude,
+      speedKnots: state.velocity,
+      heading: state.true_track,
       
       // Data source
       source: 'airplanes.live',
       timestamp: Date.now(),
       
       // Raw data for debugging
-      raw: flight
+      raw: state
     };
   }
 }
