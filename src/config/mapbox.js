@@ -1,8 +1,9 @@
 // Mapbox Configuration
 export const MAPBOX_CONFIG = {
-  // You'll need to set your Mapbox access token
-  // Get one free at: https://account.mapbox.com/access-tokens/
-  accessToken: process.env.MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', // Demo token
+  // Get Mapbox access token from environment variables
+  // For development: set in .env file
+  // For production: set as GitHub secret or environment variable
+  accessToken: process.env.MAPBOX_ACCESS_TOKEN || import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', // Demo token (limited)
   
   style: 'mapbox://styles/mapbox/satellite-streets-v12',
   
@@ -53,4 +54,3 @@ export const TERRAIN_SOURCES = {
     maxzoom: 14
   }
 };
-

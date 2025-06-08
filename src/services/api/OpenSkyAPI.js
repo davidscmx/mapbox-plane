@@ -6,8 +6,9 @@
 export class OpenSkyAPI {
   constructor(username = null, password = null) {
     this.baseUrl = 'https://opensky-network.org/api';
-    this.username = username;
-    this.password = password;
+    // Get credentials from environment variables (GitHub secrets in production)
+    this.username = username || process.env.OPENSKY_USERNAME || import.meta.env.VITE_OPENSKY_USERNAME;
+    this.password = password || process.env.OPENSKY_PASSWORD || import.meta.env.VITE_OPENSKY_PASSWORD;
     this.lastRequestTime = 0;
     this.minRequestInterval = 10000; // 10 seconds minimum between requests
   }
@@ -235,4 +236,3 @@ export class OpenSkyAPI {
     }
   }
 }
-
