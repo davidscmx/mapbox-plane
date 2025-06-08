@@ -1,264 +1,227 @@
-# ✈️ Mapbox Plane - Flight Route Simulator
+# ✈️ Mapbox Flight Tracker
 
-> Flying with the 3D standard - Real-time flight tracking with 3D terrain visualization
+A real-time 3D flight tracking application built with Mapbox GL JS, featuring live aircraft data, 3D terrain visualization, and interactive flight exploration.
 
-A modern web application that provides real-time flight tracking with stunning 3D visualization using Mapbox GL JS. Watch aircraft fly around the world in real-time with detailed flight information, 3D terrain, and interactive controls.
+![Flight Tracker Demo](https://img.shields.io/badge/Status-Ready%20to%20Fly-green)
+![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)
+![Mapbox](https://img.shields.io/badge/Mapbox-GL%20JS-blue)
 
-![Flight Simulator Preview](https://via.placeholder.com/800x400/0a0a0a/00d4ff?text=Flight+Route+Simulator)
+## 🚀 Features
 
-## 🌟 Features
+### ✈️ **Real-Time Flight Data**
+- Live aircraft positions from multiple APIs
+- OpenSky Network integration
+- Mock flight data for development
+- Automatic fallback when APIs are unavailable
 
-### Real-time Flight Tracking
-- **Live flight data** from multiple sources (OpenSky Network, Airplanes.live)
-- **Real-time updates** every 5-10 seconds
-- **Global coverage** with thousands of aircraft
-- **Automatic data aggregation** and deduplication
+### 🌍 **3D Visualization**
+- Interactive 3D terrain with Mapbox GL JS
+- Smooth aircraft animations
+- Real-time position updates
+- Click to view flight details
 
-### 3D Visualization
-- **3D terrain** with Mapbox GL JS
-- **Animated aircraft models** with realistic movement
-- **Flight trails** showing aircraft paths
-- **Smooth camera controls** and transitions
-- **Globe projection** for immersive experience
+### 🎮 **Interactive Controls**
+- Play/pause live updates
+- Center on flights
+- 3D terrain toggle
+- Search flights by callsign
+- Zoom and pan controls
 
-### Interactive Interface
-- **Flight search** by callsign, registration, or ICAO24
-- **Detailed flight information** panels
-- **Real-time statistics** and status indicators
-- **Customizable settings** and preferences
-- **Responsive design** for all devices
+### 🛡️ **Production Ready**
+- CORS-free backend proxy
+- Rate limiting and error handling
+- Environment variable configuration
+- GitHub Actions deployment
 
-### Advanced Features
-- **Aircraft categorization** by type and size
-- **Performance optimization** for smooth rendering
-- **Multiple map styles** (satellite, dark, light, etc.)
-- **Altitude-based filtering** and visualization
-- **Error handling** and fallback mechanisms
+## 🏗️ Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Backend       │    │   Flight APIs   │
+│   (Webpack)     │◄──►│   (Express)     │◄──►│   (OpenSky)     │
+│                 │    │                 │    │   (Mock Data)   │
+│ • Mapbox GL JS  │    │ • CORS Proxy    │    │                 │
+│ • 3D Rendering  │    │ • Rate Limiting │    │                 │
+│ • UI Controls   │    │ • Auth Handling │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 16+ and npm
+- Node.js 18+ 
+- npm or yarn
 - Mapbox access token (free at [mapbox.com](https://account.mapbox.com/access-tokens/))
 
-### Installation
+### 1. Clone and Install
+```bash
+git clone https://github.com/davidscmx/mapbox-plane.git
+cd mapbox-plane
+npm run install:all
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/davidscmx/mapbox-plane.git
-   cd mapbox-plane
-   ```
+### 2. Configure Environment
+```bash
+# Copy environment files
+cp .env.example .env
+cp server/.env.example server/.env
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+# Edit .env files with your Mapbox token
+MAPBOX_ACCESS_TOKEN=pk.your_mapbox_token_here
+```
 
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your Mapbox access token
-   ```
+### 3. Start Development
+```bash
+# Start both frontend and backend
+npm run dev
 
-4. **Start the development server**
-   ```bash
-   npm run dev
-   ```
+# Or start separately:
+npm run dev:client  # Frontend on http://localhost:3000
+npm run dev:server  # Backend on http://localhost:3001
+```
 
-5. **Open your browser**
-   Navigate to `http://localhost:3000`
+### 4. Open Your Browser
+Navigate to `http://localhost:3000` and watch planes fly! ✈️
+
+## 📁 Project Structure
+
+```
+mapbox-plane/
+├── src/                    # Frontend source code
+│   ├── components/         # UI components
+│   │   └── UI/            # Controls, panels, search
+│   ├── services/          # Data services
+│   │   ├── api/           # API integrations
+│   │   ├── FlightDataService.js
+│   │   ├── FlightRenderer.js
+│   │   └── MapService.js
+│   ├── styles/            # CSS styles
+│   └── main.js            # Application entry point
+├── server/                # Backend server
+│   ├── server.js          # Express server
+│   ├── package.json       # Server dependencies
+│   └── .env.example       # Server environment template
+├── dist/                  # Built frontend files
+├── webpack.config.js      # Frontend build configuration
+└── package.json           # Root package configuration
+```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-Create a `.env` file in the root directory:
-
-```env
-# Required: Mapbox access token
-MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
-
-# Optional: OpenSky Network credentials (for higher rate limits)
-OPENSKY_USERNAME=your_username
-OPENSKY_PASSWORD=your_password
-
-# Application settings
-NODE_ENV=development
-PORT=3000
-```
-
-### Mapbox Access Token
-
-1. Sign up at [Mapbox](https://account.mapbox.com/)
-2. Create a new access token
-3. Add the token to your `.env` file
-4. The token should have these scopes:
-   - `styles:read`
-   - `fonts:read`
-   - `datasets:read`
-
-## 📡 Data Sources
-
-### Primary APIs
-- **[OpenSky Network](https://opensky-network.org/)** - Free ADS-B flight data
-- **[Airplanes.live](https://airplanes.live/)** - Real-time aircraft positions
-- **[adsb.fi](https://adsb.fi/)** - Alternative flight data source
-
-### Data Features
-- **Real-time positions** updated every 5-10 seconds
-- **Flight details** including callsign, altitude, speed, heading
-- **Aircraft information** with type classification
-- **Global coverage** with automatic source switching
-- **Rate limiting** and caching for optimal performance
-
-## 🎮 Usage
-
-### Basic Navigation
-- **Mouse/Touch**: Pan and zoom the map
-- **Scroll**: Zoom in/out
-- **Right-click + drag**: Rotate the map
-- **Ctrl + drag**: Adjust pitch (3D angle)
-
-### Flight Interaction
-- **Click aircraft**: Select and view details
-- **Search flights**: Use the search bar for specific aircraft
-- **Follow flights**: Center map on selected aircraft
-- **View trails**: See flight paths and history
-
-### Controls
-- **Play/Pause**: Toggle real-time updates
-- **Center**: Focus on all visible flights
-- **3D Toggle**: Switch between 2D and 3D views
-- **Settings**: Customize appearance and behavior
-
-## 🏗️ Architecture
-
-### Core Services
-```
-src/
-├── services/
-│   ├── MapService.js          # Mapbox GL JS integration
-│   ├── FlightDataService.js   # Flight data aggregation
-│   ├── FlightRenderer.js      # 3D aircraft rendering
-│   └── ModelLoader.js         # 3D model management
-├── components/
-│   └── UI/                    # User interface components
-├── utils/
-│   ├── FlightAnimation.js     # Animation utilities
-│   └── AircraftTypes.js       # Aircraft classification
-└── config/
-    └── mapbox.js              # Map configuration
-```
-
-### Data Flow
-1. **Flight APIs** → FlightDataService (aggregation)
-2. **FlightDataService** → FlightRenderer (3D visualization)
-3. **FlightRenderer** → MapService (display on map)
-4. **UI Components** ↔ Services (user interaction)
-
-## 🎨 Customization
-
-### Map Styles
-Choose from multiple map styles:
-- **Satellite**: High-resolution satellite imagery
-- **Dark**: Dark theme for night viewing
-- **Light**: Clean light theme
-- **Outdoors**: Terrain and outdoor features
-- **Navigation**: Optimized for navigation
-
-### Aircraft Models
-- **Automatic categorization** by aircraft type
-- **Size-based scaling** (light, medium, heavy, super)
-- **Color coding** by category
-- **Custom 3D models** support (GLTF format)
-
-### Performance Settings
-- **Quality levels**: High, Medium, Low
-- **Max aircraft limit**: Adjustable for performance
-- **Update intervals**: Customizable refresh rates
-- **Culling options**: Hide distant aircraft
-
-## 🔧 Development
-
-### Build Commands
+#### Frontend (.env)
 ```bash
-npm run dev      # Development server with hot reload
-npm run build    # Production build
-npm start        # Start development server
+MAPBOX_ACCESS_TOKEN=pk.your_token_here
 ```
 
-### Project Structure
-```
-mapbox-plane/
-├── src/                 # Source code
-│   ├── components/      # UI components
-│   ├── services/        # Core services
-│   ├── utils/          # Utility functions
-│   ├── styles/         # CSS styles
-│   ├── assets/         # Static assets
-│   └── main.js         # Application entry point
-├── dist/               # Built files (generated)
-├── webpack.config.js   # Build configuration
-├── package.json        # Dependencies and scripts
-└── README.md          # This file
+#### Backend (server/.env)
+```bash
+PORT=3001
+NODE_ENV=development
+OPENSKY_USERNAME=optional_username
+OPENSKY_PASSWORD=optional_password
 ```
 
-### Adding New Features
+### API Configuration
 
-1. **New API Source**: Extend `FlightDataService`
-2. **UI Components**: Add to `src/components/UI/`
-3. **3D Models**: Place in `src/assets/models/`
-4. **Styling**: Update `src/styles/main.css`
+#### OpenSky Network
+- **Free**: 400 requests/day, no authentication
+- **Registered**: 4000 requests/day with username/password
+- **Rate Limit**: 10 seconds between requests
+
+#### Mock API
+- **Always Available**: Generates realistic flight data
+- **No Rate Limits**: Perfect for development
+- **Configurable**: Adjust flight count and locations
 
 ## 🚀 Deployment
 
-### Production Build
+### GitHub Pages (Recommended)
+1. Set GitHub secrets in your repository:
+   - `MAPBOX_ACCESS_TOKEN`: Your Mapbox token
+   - `OPENSKY_USERNAME`: (Optional) OpenSky username
+   - `OPENSKY_PASSWORD`: (Optional) OpenSky password
+
+2. Push to main branch - GitHub Actions will deploy automatically
+
+### Manual Deployment
 ```bash
+# Build frontend
 npm run build
+
+# Start production server
+npm start
 ```
 
-### Deploy to Static Hosting
-The built files in `dist/` can be deployed to:
-- **Netlify**: Drag and drop the `dist` folder
-- **Vercel**: Connect your GitHub repository
-- **GitHub Pages**: Use the `gh-pages` branch
-- **AWS S3**: Upload to S3 bucket with static hosting
+### Docker Deployment
+```bash
+# Build and run with Docker
+docker build -t flight-tracker .
+docker run -p 3001:3001 -e MAPBOX_ACCESS_TOKEN=your_token flight-tracker
+```
 
-### Environment Variables for Production
-Make sure to set your production environment variables:
-- `MAPBOX_ACCESS_TOKEN`: Your production Mapbox token
-- `NODE_ENV=production`
+## 🛠️ Development
+
+### Adding New APIs
+1. Create new API service in `src/services/api/`
+2. Add backend proxy endpoint in `server/server.js`
+3. Register API in `FlightDataService.js`
+
+### Customizing UI
+- Modify components in `src/components/UI/`
+- Update styles in `src/styles/main.css`
+- Add new controls in `Controls.js`
+
+### Backend Extensions
+- Add new endpoints in `server/server.js`
+- Implement rate limiting and caching
+- Add authentication middleware
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### CORS Errors
+- **Solution**: Make sure backend server is running on port 3001
+- **Check**: Frontend is configured to use `http://localhost:3001/api/`
+
+#### No Flight Data
+- **Check**: Backend server logs for API errors
+- **Fallback**: Mock API should always provide data
+- **Rate Limits**: Wait between requests to avoid rate limiting
+
+#### Mapbox Errors
+- **Token**: Verify your Mapbox access token is valid
+- **Quota**: Check your Mapbox account usage limits
+- **Network**: Ensure internet connection for map tiles
+
+### Debug Mode
+```bash
+# Enable verbose logging
+NODE_ENV=development npm run dev
+```
 
 ## 📊 Performance
 
 ### Optimization Features
-- **Level-of-detail rendering**: Simplified models at distance
-- **Frustum culling**: Only render visible aircraft
-- **Efficient data structures**: Optimized for real-time updates
-- **Memory management**: Automatic cleanup of old data
-- **Request batching**: Minimize API calls
+- **Efficient Rendering**: Only update visible aircraft
+- **Smart Caching**: Cache flight data to reduce API calls
+- **Rate Limiting**: Prevent API quota exhaustion
+- **Lazy Loading**: Load components as needed
 
-### Performance Tips
-- Limit max aircraft count for better performance
-- Use lower quality settings on slower devices
-- Increase update intervals to reduce load
-- Close other browser tabs for better performance
+### Monitoring
+- Backend logs API response times
+- Frontend tracks render performance
+- Rate limiting prevents overuse
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Setup
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-### Reporting Issues
-- Use the [GitHub Issues](https://github.com/davidscmx/mapbox-plane/issues) page
-- Include browser version and steps to reproduce
-- Provide console error messages if available
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
 ## 📄 License
 
@@ -266,18 +229,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **[OpenSky Network](https://opensky-network.org/)** for free flight data
-- **[Mapbox](https://mapbox.com/)** for amazing mapping technology
-- **[Three.js](https://threejs.org/)** for 3D graphics capabilities
-- **[Airplanes.live](https://airplanes.live/)** for additional flight data
+- **OpenSky Network** for free flight data API
+- **Mapbox** for incredible 3D mapping platform
+- **ADS-B Exchange** for additional flight data sources
+- **Aviation Community** for open data initiatives
 
-## 📞 Support
+## 🔗 Links
 
-- **Documentation**: Check this README and code comments
-- **Issues**: [GitHub Issues](https://github.com/davidscmx/mapbox-plane/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/davidscmx/mapbox-plane/discussions)
+- [Live Demo](https://davidscmx.github.io/mapbox-plane/) (Coming Soon)
+- [Mapbox Documentation](https://docs.mapbox.com/mapbox-gl-js/)
+- [OpenSky Network API](https://opensky-network.org/apidoc/)
+- [Flight Tracking Guide](https://github.com/davidscmx/mapbox-plane/wiki)
 
 ---
 
-**Happy Flying!** ✈️ 🌍
+**Ready to track some flights?** 🛫 Get your Mapbox token and let's fly! ✈️
 
