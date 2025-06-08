@@ -7,8 +7,8 @@ export class OpenSkyAPI {
   constructor(username = null, password = null) {
     this.baseUrl = 'https://opensky-network.org/api';
     // Get credentials from environment variables (GitHub secrets in production)
-    this.username = username || process.env.OPENSKY_USERNAME || import.meta.env.VITE_OPENSKY_USERNAME;
-    this.password = password || process.env.OPENSKY_PASSWORD || import.meta.env.VITE_OPENSKY_PASSWORD;
+    this.username = username || process.env.OPENSKY_USERNAME;
+    this.password = password || process.env.OPENSKY_PASSWORD;
     this.lastRequestTime = 0;
     this.minRequestInterval = 10000; // 10 seconds minimum between requests
   }
@@ -54,7 +54,7 @@ export class OpenSkyAPI {
 
     try {
       this.lastRequestTime = Date.now();
-      
+
       const response = await fetch(url.toString(), {
         headers: {
           'Accept': 'application/json',
@@ -81,7 +81,7 @@ export class OpenSkyAPI {
    */
   async getAllFlights(bounds = null) {
     const params = {};
-    
+
     if (bounds) {
       params.lamin = bounds.south;
       params.lamax = bounds.north;
@@ -90,7 +90,7 @@ export class OpenSkyAPI {
     }
 
     const data = await this.makeRequest('/states/all', params);
-    
+
     if (!data || !data.states) {
       return [];
     }
@@ -106,7 +106,7 @@ export class OpenSkyAPI {
   async getFlightsByIcao(icao24List) {
     const icao24String = icao24List.join(',');
     const data = await this.makeRequest('/states/all', { icao24: icao24String });
-    
+
     if (!data || !data.states) {
       return [];
     }
@@ -132,8 +132,8 @@ export class OpenSkyAPI {
 
   /**
    * Parse OpenSky state vector into standardized format
-   * State vector format: [icao24, callsign, origin_country, time_position, last_contact, 
-   *                      longitude, latitude, baro_altitude, on_ground, velocity, 
+   * State vector format: [icao24, callsign, origin_country, time_position, last_contact,
+   *                      longitude, latitude, baro_altitude, on_ground, velocity,
    *                      true_track, vertical_rate, sensors, geo_altitude, squawk, spi, position_source]
    */
   parseStateVector(state) {
@@ -142,33 +142,33 @@ export class OpenSkyAPI {
       icao24: state[0],
       callsign: state[1] ? state[1].trim() : null,
       originCountry: state[2],
-      
+
       // Position data
       longitude: state[5],
       latitude: state[6],
       baroAltitude: state[7], // meters
       geoAltitude: state[13], // meters
       onGround: state[8],
-      
+
       // Movement data
       velocity: state[9], // m/s
       trueTrack: state[10], // degrees
       verticalRate: state[11], // m/s
-      
+
       // Timestamps
       timePosition: state[3],
       lastContact: state[4],
-      
+
       // Additional data
       squawk: state[14],
       spi: state[15],
       positionSource: state[16],
-      
+
       // Computed fields
       altitudeFeet: state[7] ? Math.round(state[7] * 3.28084) : null,
       speedKnots: state[9] ? Math.round(state[9] * 1.94384) : null,
       heading: state[10],
-      
+
       // Data source
       source: 'opensky',
       timestamp: Date.now()
@@ -178,7 +178,7 @@ export class OpenSkyAPI {
   /**
    * Get flights within a radius of a point
    * @param {number} lat - Latitude
-   * @param {number} lon - Longitude  
+   * @param {number} lon - Longitude
    * @param {number} radiusKm - Radius in kilometers
    * @returns {Promise<Array>} Array of flights
    */
@@ -186,25 +186,25 @@ export class OpenSkyAPI {
     // Convert radius to approximate bounding box
     const latDelta = radiusKm / 111; // Rough conversion: 1 degree ≈ 111 km
     const lonDelta = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
-    
+
     const bounds = {
       north: lat + latDelta,
       south: lat - latDelta,
       east: lon + lonDelta,
       west: lon - lonDelta
     };
-    
+
     const flights = await this.getAllFlights(bounds);
-    
+
     // Filter by actual distance
     return flights.filter(flight => {
       if (!flight.latitude || !flight.longitude) return false;
-      
+
       const distance = this.calculateDistance(
-        lat, lon, 
+        lat, lon,
         flight.latitude, flight.longitude
       );
-      
+
       return distance <= radiusKm;
     });
   }
@@ -216,9 +216,9 @@ export class OpenSkyAPI {
     const R = 6371; // Earth's radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
+    const a =
       Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;

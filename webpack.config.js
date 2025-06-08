@@ -5,7 +5,7 @@ const webpack = require('webpack');
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
-  
+
   return {
     entry: './src/main.js',
     output: {
@@ -56,4 +56,3 @@ module.exports = (env, argv) => {
     },
   };
 };
-
