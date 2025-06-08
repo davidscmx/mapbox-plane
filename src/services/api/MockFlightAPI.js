@@ -5,13 +5,33 @@
  */
 export class MockFlightAPI {
   constructor() {
-    this.baseUrl = 'mock://flights';
-    this.flightCount = 50; // Number of mock flights to generate
+    // Use backend mock endpoint
+    this.baseUrl = process.env.NODE_ENV === 'production' 
+      ? '/api/mock' 
+      : 'http://localhost:3001/api/mock';
     this.updateInterval = 5000; // Update every 5 seconds
-    this.flights = new Map();
     this.lastUpdate = 0;
-    
-    this.initializeMockFlights();
+  }
+
+  /**
+   * Make request to backend mock API
+   */
+  async makeRequest(endpoint, params = {}) {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const url = `${this.baseUrl}/${endpoint}${queryString ? '?' + queryString : ''}`;
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Mock API error: ${response.status} ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Mock API request failed:', error);
+      throw error;
+    }
   }
 
   /**
@@ -161,37 +181,68 @@ export class MockFlightAPI {
    * Get all flights
    */
   async getAllFlights() {
-    this.updateFlightPositions();
-    return Array.from(this.flights.values());
+    try {
+      const data = await this.makeRequest('flights');
+      return this.parseOpenSkyResponse(data);
+    } catch (error) {
+      console.error('Error fetching mock flights:', error);
+      return [];
+    }
   }
 
   /**
    * Get flights by geographic location
    */
   async getFlightsByLocation(lat, lon, radius = 250) {
-    this.updateFlightPositions();
-    
-    const flights = Array.from(this.flights.values());
-    
-    // Filter flights within radius (simplified distance calculation)
-    return flights.filter(flight => {
-      const distance = this.calculateDistance(lat, lon, flight.latitude, flight.longitude);
-      return distance <= radius;
-    });
+    try {
+      const data = await this.makeRequest('flights', { lat, lon, radius });
+      return this.parseOpenSkyResponse(data);
+    } catch (error) {
+      console.error('Error fetching mock flights by location:', error);
+      return [];
+    }
   }
 
   /**
-   * Calculate distance between two points (simplified)
+   * Parse OpenSky-format response from backend
    */
-  calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Earth's radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
+  parseOpenSkyResponse(data) {
+    if (!data || !data.states) {
+      return [];
+    }
+
+    return data.states.map(state => ({
+      icao24: state[0],
+      callsign: state[1] ? state[1].trim() : null,
+      origin_country: state[2],
+      time_position: state[3],
+      last_contact: state[4],
+      longitude: state[5],
+      latitude: state[6],
+      baro_altitude: state[7],
+      on_ground: state[8],
+      velocity: state[9],
+      true_track: state[10],
+      vertical_rate: state[11],
+      sensors: state[12],
+      geo_altitude: state[13],
+      squawk: state[14],
+      spi: state[15],
+      position_source: state[16],
+      category: state[17],
+      
+      // Computed fields for compatibility
+      baroAltitude: state[7],
+      geoAltitude: state[13],
+      onGround: state[8],
+      trueTrack: state[10],
+      timePosition: state[3] ? state[3] * 1000 : null,
+      lastContact: state[4] ? state[4] * 1000 : null,
+      
+      // Data source
+      source: 'mock',
+      timestamp: Date.now()
+    }));
   }
 
   /**
@@ -231,20 +282,4 @@ export class MockFlightAPI {
       type: 'mock'
     };
   }
-
-  /**
-   * Make request (mock implementation)
-   */
-  async makeRequest(endpoint, params = {}) {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 500 + 100));
-    
-    // Return mock data based on endpoint
-    if (endpoint.includes('states/all')) {
-      return { states: await this.getAllFlights() };
-    }
-    
-    return { aircraft: await this.getAllFlights() };
-  }
 }
-

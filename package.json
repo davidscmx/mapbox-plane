@@ -1,13 +1,19 @@
 {
-  "name": "mapbox-plane",
+  "name": "mapbox-plane-tracker",
   "version": "1.0.0",
-  "description": "Flying with the 3d standard - Real-time flight route simulator",
+  "description": "3D Flight Route Simulator with Mapbox GL JS and real-time flight data",
   "main": "src/main.js",
   "scripts": {
-    "dev": "webpack serve --mode development",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "webpack serve --mode development",
+    "dev:server": "cd server && npm run dev",
     "build": "webpack --mode production",
-    "start": "npm run dev"
+    "build:server": "cd server && npm install",
+    "start": "cd server && npm start",
+    "install:all": "npm install && cd server && npm install",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+<<<<<<< HEAD
   "keywords": [
     "mapbox",
     "flight",
@@ -18,11 +24,13 @@
   ],
   "author": "davidscmx",
   "license": "MIT",
+=======
+>>>>>>> bef42cbba4b191d4645de146c10e2372261d17a7
   "dependencies": {
-    "mapbox-gl": "^3.0.1",
-    "three": "^0.158.0"
+    "mapbox-gl": "^2.15.0"
   },
   "devDependencies": {
+<<<<<<< HEAD
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.8.1",
     "file-loader": "^6.2.0",
@@ -32,4 +40,25 @@
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
   }
+=======
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1",
+    "html-webpack-plugin": "^5.5.3",
+    "css-loader": "^6.8.1",
+    "style-loader": "^3.3.3",
+    "file-loader": "^6.2.0",
+    "concurrently": "^8.2.0"
+  },
+  "keywords": [
+    "flight-tracking",
+    "mapbox",
+    "3d-visualization",
+    "real-time",
+    "aviation",
+    "ads-b"
+  ],
+  "author": "Flight Tracker Team",
+  "license": "MIT"
+>>>>>>> bef42cbba4b191d4645de146c10e2372261d17a7
 }

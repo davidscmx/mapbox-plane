@@ -64,7 +64,7 @@ export class FlightDataService {
   async fetchFlightData() {
     if (this.isUpdating) {
       console.log('⏳ Update already in progress, skipping...');
-      return this.getFlights();
+      return Array.from(this.flights.values());
     }
 
     this.isUpdating = true;
@@ -94,16 +94,16 @@ export class FlightDataService {
       
       // Emit update event
       this.emit('flightsUpdated', {
-        flights: this.getFlights(),
+        flights: Array.from(this.flights.values()),
         count: flightCount,
         duration,
         timestamp: Date.now()
       });
 
-      return this.getFlights();
+      return Array.from(this.flights.values());
     } catch (error) {
       console.error('❌ Error fetching flight data:', error);
-      return this.getFlights(); // Return cached data
+      return Array.from(this.flights.values()); // Return cached data
     } finally {
       this.isUpdating = false;
       this.lastUpdate = Date.now();
@@ -166,6 +166,27 @@ export class FlightDataService {
     });
 
     return allFlights;
+  }
+
+  /**
+   * Get all flights from cache
+   */
+  getFlights() {
+    return Array.from(this.flights.values());
+  }
+
+  /**
+   * Get flight statistics
+   */
+  getStats() {
+    const flights = this.getFlights();
+    return {
+      totalFlights: flights.length,
+      activeFlights: flights.filter(f => !f.onGround).length,
+      lastUpdate: new Date(this.lastUpdate).toISOString(),
+      apiStatus: this.apiStatus,
+      updateCount: 1
+    };
   }
 
   /**
@@ -342,13 +363,6 @@ export class FlightDataService {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
     }
-  }
-
-  /**
-   * Get current statistics
-   */
-  getStats() {
-    return { ...this.stats };
   }
 
   /**

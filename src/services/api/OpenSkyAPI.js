@@ -1,16 +1,18 @@
 /**
  * OpenSky Network API Service
  * Provides real-time flight data from ADS-B transponders
- * Documentation: https://openskynetwork.github.io/opensky-api/
+ * Documentation: https://opensky-network.org/apidoc/
  */
 export class OpenSkyAPI {
-  constructor(username = null, password = null) {
-    this.baseUrl = 'https://opensky-network.org/api';
-    // Get credentials from environment variables (GitHub secrets in production)
-    this.username = username || process.env.OPENSKY_USERNAME;
-    this.password = password || process.env.OPENSKY_PASSWORD;
+  constructor() {
+    // Use backend proxy to avoid CORS issues
+    this.baseUrl = process.env.NODE_ENV === 'production'
+      ? '/api/opensky'
+      : 'http://localhost:3001/api/opensky';
+
     this.lastRequestTime = 0;
     this.minRequestInterval = 10000; // 10 seconds minimum between requests
+    this.maxRetries = 3;
   }
 
   /**
@@ -38,36 +40,48 @@ export class OpenSkyAPI {
   }
 
   /**
-   * Make API request with error handling
+   * Make HTTP request to OpenSky API via backend proxy
    */
   async makeRequest(endpoint, params = {}) {
-    if (!this.canMakeRequest()) {
-      throw new Error('Rate limit: Please wait before making another request');
+    // Rate limiting
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      throw new Error(`Rate limit: Please wait ${Math.ceil(waitTime / 1000)} seconds before making another request`);
     }
 
-    const url = new URL(`${this.baseUrl}${endpoint}`);
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
-        url.searchParams.append(key, value);
-      }
-    });
-
     try {
+<<<<<<< HEAD
       this.lastRequestTime = Date.now();
 
       const response = await fetch(url.toString(), {
+=======
+      // Build URL with query parameters
+      const queryString = new URLSearchParams(params).toString();
+      const url = `${this.baseUrl}/${endpoint}${queryString ? '?' + queryString : ''}`;
+
+      console.log(`🛩️ Making OpenSky API request: ${url}`);
+
+      const response = await fetch(url, {
+        method: 'GET',
+>>>>>>> bef42cbba4b191d4645de146c10e2372261d17a7
         headers: {
-          'Accept': 'application/json',
-          ...this.getAuthHeaders()
+          'Content-Type': 'application/json'
         }
       });
 
+      this.lastRequestTime = now;
+
       if (!response.ok) {
-        throw new Error(`OpenSky API error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`OpenSky API error: ${response.status} ${errorText}`);
       }
 
       const data = await response.json();
       return data;
+
     } catch (error) {
       console.error('OpenSky API request failed:', error);
       throw error;
@@ -230,12 +244,19 @@ export class OpenSkyAPI {
   async getStatus() {
     try {
       // Use a simpler endpoint that doesn't require specific parameters
-      const response = await this.makeRequest('/states/all?lamin=45&lomin=5&lamax=46&lomax=6');
+      const response = await this.makeRequest('states/all', {
+        lamin: 45,
+        lomin: 5,
+        lamax: 46,
+        lomax: 6
+      });
+
       return {
         status: 'connected',
-        authenticated: !!this.username,
-        rateLimit: this.username ? '4000/day' : '400/day',
-        lastUpdate: new Date().toISOString()
+        authenticated: true, // Backend handles auth
+        rateLimit: 'Backend managed',
+        lastUpdate: new Date().toISOString(),
+        flightCount: response.states ? response.states.length : 0
       };
     } catch (error) {
       console.warn('OpenSky API status check failed:', error.message);
